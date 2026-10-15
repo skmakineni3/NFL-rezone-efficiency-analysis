@@ -1,117 +1,102 @@
-# NFL Red Zone Efficiency Analysis (2024)
+# 🏈 NFL Red Zone Efficiency Analysis (2024)
+Author: Suhas Makineni
 
-**Author:** Suhas Makineni  
-**Project:** Project 2 — NFL Red Zone Efficiency Analysis
+What makes a red zone play turn into a touchdown? Using every offensive play from the **2024 NFL season**, this project tests which situational factors (field position, down, play type) drive touchdown probability inside the 20, then builds models to predict it.
 
-## Overview
-This project analyzes the **2024 NFL play-by-play dataset** to measure **red zone efficiency**—how often plays inside the red zone result in touchdowns—and to understand which situational factors are most associated with scoring.
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![pandas](https://img.shields.io/badge/pandas-150458?logo=pandas&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?logo=scikitlearn&logoColor=white)
+![SciPy](https://img.shields.io/badge/SciPy-8CAAE6?logo=scipy&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?logo=jupyter&logoColor=white)
 
-The project has two parts:
-1. **Statistical analysis** of touchdown probability in the red zone by field position, down, and play type.
-2. **Predictive modeling** to estimate touchdown likelihood using logistic regression and a random forest classifier.
+---
 
-## Data
-- **Source file:** `pbp-2024.csv`
-- Each row represents an offensive play with context such as:
-  - down and distance
-  - field position
-  - play result (yards gained, touchdown indicator)
-  - play type (rush/pass)
-  - penalty information
+## 🔑 Key Findings
 
-## Tools & Libraries
-- Python: `pandas`, `numpy`
-- Visualization: `matplotlib`, `seaborn`
-- Statistics: `scipy.stats`
-- Modeling: `scikit-learn`
+| | |
+|---|---|
+| 📍 **Field position dominates** | TD rate climbs from **7%** at 15–20 yards out to **33%** inside the 5 |
+| 4️⃣ **4th down scores most (29%)**, but it's selection bias | Teams mostly go for it on 4th down when they're right at the goal line |
+| 🎯 **Passing beats rushing** | Pass plays score **21.3%** of the time vs **17.1%** for rushes (p = 0.0001) |
+| 🌲 **Random forest edges out logistic regression** | ROC-AUC **0.73** vs **0.69** |
 
-## Methodology
+---
 
-### 1) Data Cleaning
-Steps performed:
-- Dropped fully-null columns
-- Filtered to **offensive plays only**: `PlayType ∈ {RUSH, PASS}`
-- Kept only relevant variables for analysis:
-  - game context: quarter/time, offense/defense
-  - situation: down, yards-to-go
-  - field position: yard line variables
-  - outcomes: yards gained, touchdown
-  - play type + penalty fields
+## 📦 Data
 
-### 2) Feature Engineering
-Created the following derived variables:
-- `yardline_100`: yards from the opponent's end zone
-- `red_zone`: binary flag for red zone plays
-- `td`: touchdown indicator as an integer (0/1)
+- **Source:** `pbp-2024.csv`, the 2024 NFL play-by-play data (**53,283 plays**, 45 columns)
+- **Scope:** offensive plays only (`RUSH`, `PASS`), giving **5,546 red zone plays**
+- Each row includes down, distance, field position, yards gained, play type, penalty info, and a touchdown flag
 
-`yardline_100` is the distance (in yards) from the opponent's end zone, so a play is in the red zone when `yardline_100 <= 20`.
+---
 
-### 3) Exploratory Data Analysis (EDA)
-Key variables explored:
-- `Down`
-- `ToGo`
-- `yardline_100`
-- `Yards`
-- `td`
+## 🔬 Methodology
 
-Visualizations include:
-- Histograms for down, distance, field position, and yards gained
-- Touchdown probability by field position bins (showing sharp increase in/near red zone)
+### 1. Cleaning & feature engineering
+- Dropped fully null columns and kept only rush and pass plays
+- `yardline_100`: field position, where **100 = the opponent's goal line**
+- `red_zone`: `1` if `yardline_100 >= 80` (inside the opponent's 20)
+- `td`: touchdown indicator (0/1)
 
-### 4) Hypothesis Testing (Red Zone Only)
-Three hypotheses were evaluated using **chi-square tests** on contingency tables:
+### 2. Exploratory analysis
+Distributions of down, yards to go, field position, and yards gained, plus touchdown probability by field position bin. The bins show TD rate jumping sharply once a team reaches the red zone.
 
-#### Hypothesis 1 — Field position affects TD probability
-- **H0:** TD rates are equal across red zone field-position bins  
-- **H1:** TD rates differ across bins  
-- **Result:** Reject H0 (p < 0.05). TD probability increases near the goal line (0–5 yards).
+### 3. Hypothesis testing: chi-square tests on red zone plays
 
-#### Hypothesis 2 — Down affects TD probability
-- **H0:** TD probability is equal across downs  
-- **H1:** Some downs have different TD probabilities  
-- **Result:** Reject H0 (p < 0.05). 4th down shows higher TD probability, likely due to selection effects (teams go for it near the goal line).
+| Hypothesis | Result | Takeaway |
+|---|:---:|---|
+| **H1:** TD rate differs by field position | ✅ Reject H₀ (p < 0.001) | The closer to the goal line, the higher the TD rate |
+| **H2:** TD rate differs by down | ✅ Reject H₀ (p < 0.001) | Driven by situation: 4th down attempts happen closest to the goal line |
+| **H3:** TD rate differs by play type | ✅ Reject H₀ (p = 0.0001) | Passes convert more often than rushes in the red zone |
 
-#### Hypothesis 3 — Play type affects TD probability
-- **H0:** Rush and pass plays have equal TD probability  
-- **H1:** TD probability differs by play type  
-- **Result:** Fail to reject H0 (p > 0.05). Rush vs pass efficiency is similar in the red zone at the aggregate level.
+### 4. Predictive modeling
+**Goal:** predict whether a red zone play results in a touchdown.
+**Features:** `Down`, `ToGo`, `yardline_100`, `IsRush`, `IsPass`, `IsPenalty` · **Split:** 80/20 train/test
 
-### 5) Predictive Modeling (TD Classification)
-Goal: Predict whether a red zone play results in a touchdown.
+| Model | ROC-AUC |
+|---|:---:|
+| Logistic Regression | 0.69 |
+| **Random Forest** (300 trees) | **0.73** |
 
-**Features:**
-- `Down`, `ToGo`, `yardline_100`, `IsRush`, `IsPass`, `IsPenalty`
+**Why AUC and not accuracy?** Only about 19% of red zone plays score, so a model that always predicts "no touchdown" is already 81% accurate. ROC-AUC measures how well each model *ranks* TD plays above non-TD plays, which is what matters here.
 
-**Models:**
-- Logistic Regression  
-- Random Forest (300 trees)
+**Feature importance (random forest):** field position (55%) > yards to go (30%) > down (9%) > play type and penalties (< 5% combined)
 
-**Evaluation metrics:**
-- Accuracy (reported but not emphasized due to class imbalance)
-- ROC AUC (primary metric)
+---
 
-**Results (from analysis run):**
-- Logistic Regression: **AUC ≈ 0.746**
-- Random Forest: **AUC ≈ 0.727**
+## 🚀 Run it locally
 
-Accuracy was very high for both models but is **misleading** because touchdowns are relatively rare (even in the red zone). AUC provides a more meaningful measure of discrimination between TD vs non-TD plays.
-
-Feature importance from the Random Forest indicated:
-- `yardline_100` is the strongest predictor
-- `Down` and `ToGo` contribute moderately
-- play type and penalties contribute minimally
-
-## Key Findings
-- **Field position is the strongest driver** of red zone touchdown probability.
-- **Down appears significant**, but much of the effect is due to situational context (4th downs happen closer to the goal line).
-- **Rush vs pass** does not significantly change touchdown probability in the red zone at an aggregate level.
-- A **simple logistic regression** performs competitively with a random forest for the selected features.
-
-## How to Run
-
-### 1) Create environment (recommended)
 ```bash
+git clone https://github.com/skmakineni3/NFL-rezone-efficiency-analysis.git
+cd NFL-rezone-efficiency-analysis
 python -m venv venv
-source venv/bin/activate  # Mac/Linux
-# venv\Scripts\activate   # Windows
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
 pip install -r requirements.txt
+jupyter notebook Project_2.ipynb
+```
+
+---
+
+## 🗂️ Project structure
+
+```
+├── Project_2.ipynb      # Full analysis: cleaning, EDA, hypothesis tests, models
+├── pbp-2024.csv         # 2024 NFL play-by-play data
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🔭 Next Steps
+
+- Add game context (score differential, time remaining) to the models
+- Try gradient boosting and calibrate predicted probabilities
+- Compare red zone efficiency across teams and play-callers
+
+---
+
+## 📬 Contact
+
+**Suhas Makineni** · [GitHub](https://github.com/skmakineni3) · [skmakineni@gmail.com](mailto:skmakineni@gmail.com)
