@@ -40,17 +40,11 @@ Steps performed:
 
 ### 2) Feature Engineering
 Created the following derived variables:
-- `yardline_100`: standardized field position variable (see note below)
+- `yardline_100`: yards from the opponent's end zone
 - `red_zone`: binary flag for red zone plays
 - `td`: touchdown indicator as an integer (0/1)
 
-> **Important note on field position**
->
-> Red zone can be defined depending on how `yardline_100` is coded:
-> - If `yardline_100` means **yards from opponent end zone**, red zone is `yardline_100 <= 20`
-> - If `yardline_100` means **field position where 100 is the opponent end zone**, red zone is `yardline_100 >= 80`
->
-> This repo assumes the definition used in the analysis notebook/code you run. Verify this once by checking a few sample rows.
+`yardline_100` is the distance (in yards) from the opponent's end zone, so a play is in the red zone when `yardline_100 <= 20`.
 
 ### 3) Exploratory Data Analysis (EDA)
 Key variables explored:
